@@ -7,12 +7,10 @@ import re
 app = Flask(__name__)
 
 def clean_text(text):
-    """不要な文字列を削除するクリーニング関数"""
     return re.sub(r'（.*?）', '', text).strip()
 
 @app.route('/process', methods=['POST'])
 def process():
-    # スクレイピング処理
     url = "https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?ar=020&bs=021&sc=02201&ta=02&po=0&pj=1&pc=100"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
@@ -44,14 +42,11 @@ def process():
     df = pd.DataFrame(property_data)
     df = df.dropna(how='all')
 
-    # GASに渡す形：JSON配列に変換
+    # ✅ JSON形式で返す！
     return jsonify([df.columns.tolist()] + df.fillna("").values.tolist())
 
-if __name__ == "__main__":
-    app.run(port=5000)
-
+# 🔧 ポート指定（重要！）
 import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Renderが指定したポート番号を使う
-    app.run(host="0.0.0.0", port=port)        # 必ず 0.0.0.0 にバインド！
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
