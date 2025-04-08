@@ -11,7 +11,12 @@ def clean_text(text):
 
 @app.route('/process', methods=['POST'])
 def process():
-    url = "https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?ar=020&bs=021&sc=02201&ta=02&po=0&pj=1&pc=100"
+    data = request.get_json()
+    url = data.get("url")
+
+    if not url:
+        return jsonify({"error": "URLが指定されていません"}), 400
+
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
     property_data = []
@@ -42,10 +47,8 @@ def process():
     df = pd.DataFrame(property_data)
     df = df.dropna(how='all')
 
-    # ✅ JSON形式で返す！
     return jsonify([df.columns.tolist()] + df.fillna("").values.tolist())
 
-# 🔧 ポート指定（重要！）
 import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
