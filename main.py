@@ -1,25 +1,29 @@
-@app.route('/process', methods=['POST'])
-def process():
-    data = request.get_json()
-    path = data.get("url")  # パスだけが渡ってくる（例: nagano/sc_20206/）
+from flask import Flask, request, jsonify
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import re
+import os
 
-    if not path:
-        return jsonify({"error": "URLパスが指定されていません"}), 400
+app = Flask(__name__)
 
-    base_url = f"https://suumo.jp/chukoikkodate/{path.strip('/')}/"
+def clean_text(text):
+    return re.sub(r'（.*?）', '', text).strip()
+
+def extract_data_from_url(base_url):
     property_data = []
-
     page = 1
+
     while True:
-        url = base_url if page == 1 else f"{base_url}?page={page}"
+        url = f"{base_url}?page={page}" if page > 1 else base_url
         response = requests.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
 
-        units = soup.find_all(class_=re.compile('^property_unit'))
-        if not units:
-            break  # 次のページがなければ終了
+        listings = soup.find_all(class_=re.compile('^property_unit'))
+        if not listings:
+            break  # データがなければ終了
 
-        for prop in units:
+        for prop in listings:
             try:
                 location = prop.find("dt", text="所在地").find_next("dd").text.strip()
                 price = prop.find("dt", class_="dottable-vm", text="販売価格").find_next("span", class_="dottable-value").text.strip()
@@ -39,11 +43,26 @@ def process():
 
                 if data_entry not in property_data:
                     property_data.append(data_entry)
+
             except AttributeError:
-                pass
+                continue  # 欠損データはスキップ
+
         page += 1
 
-    df = pd.DataFrame(property_data)
-    df = df.dropna(how='all')
+    return property_data
 
+@app.route("/process", methods=["POST"])
+def process():
+    data = request.get_json()
+    base_url = data.get("url")
+
+    if not base_url:
+        return jsonify({"error": "URLが指定されていません"}), 400
+
+    extracted_data = extract_data_from_url(base_url)
+    df = pd.DataFrame(extracted_data).dropna(how='all')
     return jsonify([df.columns.tolist()] + df.fillna("").values.tolist())
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
