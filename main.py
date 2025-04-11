@@ -3,68 +3,73 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import re
-import os
 
 app = Flask(__name__)
 
 def clean_text(text):
-    return re.sub(r'（.*?）', '', text).strip() if text else ""
+    return re.sub(r'（.*?）', '', text).strip()
 
-def get_next_text(prop, dt_text):
-    dt_tag = prop.find("dt", text=dt_text)
-    if dt_tag:
-        dd_tag = dt_tag.find_next("dd")
-        if dd_tag:
-            return dd_tag.text.strip()
-    return ""
-
-def get_next_value(prop, dt_text):
-    dt_tag = prop.find("dt", class_="dottable-vm", text=dt_text)
-    if dt_tag:
-        value_tag = dt_tag.find_next("span", class_="dottable-value")
-        if value_tag:
-            return value_tag.text.strip()
-    return ""
+def scrape_suumo_page(url):
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup
+    except:
+        return None
 
 @app.route('/process', methods=['POST'])
 def process():
     data = request.get_json()
-    url = data.get("url")
-
-    if not url:
+    base_url = data.get("url")
+    
+    if not base_url:
         return jsonify({"error": "URLが指定されていません"}), 400
 
-    try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.content, "html.parser")
-        property_data = []
+    page = 1
+    all_data = []
 
-        for prop in soup.find_all(class_=re.compile('^property_unit')):
-            location = get_next_text(prop, "所在地")
-            price = get_next_value(prop, "販売価格")
-            land = clean_text(get_next_text(prop, "土地面積"))
-            building = clean_text(get_next_text(prop, "建物面積"))
-            layout = get_next_text(prop, "間取り")
-            age = get_next_text(prop, "築年月")
+    while True:
+        page_url = base_url if page == 1 else f"{base_url}?page={page}"
+        soup = scrape_suumo_page(page_url)
+        if not soup:
+            break
 
-            data_entry = {
-                "所在地": location,
-                "販売価格": price,
-                "土地面積": land,
-                "建物面積": building,
-                "間取り": layout,
-                "築年月": age
-            }
+        property_units = soup.find_all(class_=re.compile('^property_unit'))
+        if not property_units:
+            break  # ページにデータがなければ終了
 
-            if any(data_entry.values()) and data_entry not in property_data:
-                property_data.append(data_entry)
+        for prop in property_units:
+            try:
+                location = prop.find("dt", text="所在地").find_next("dd").text.strip()
+                price = prop.find("dt", class_="dottable-vm", text="販売価格").find_next("span", class_="dottable-value").text.strip()
+                land = clean_text(prop.find("dt", text="土地面積").find_next("dd").text)
+                building = clean_text(prop.find("dt", text="建物面積").find_next("dd").text)
+                layout = prop.find("dt", text="間取り").find_next("dd").text.strip()
+                age = prop.find("dt", text="築年月").find_next("dd").text.strip()
 
-        df = pd.DataFrame(property_data)
-        return jsonify([df.columns.tolist()] + df.fillna("").values.tolist())
+                data_entry = {
+                    "所在地": location,
+                    "販売価格": price,
+                    "土地面積": land,
+                    "建物面積": building,
+                    "間取り": layout,
+                    "築年月": age
+                }
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+                if data_entry not in all_data:
+                    all_data.append(data_entry)
+            except AttributeError:
+                continue
 
+        page += 1
+
+    df = pd.DataFrame(all_data)
+    df = df.dropna(how='all')
+
+    return jsonify([df.columns.tolist()] + df.fillna("").values.tolist())
+
+import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
