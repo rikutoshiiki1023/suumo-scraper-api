@@ -34,16 +34,16 @@ def process():
 
         for prop in listings:
             try:
-                price = prop.find("dt", class_="dottable-vm", string="販売価格").find_next("span", class_="dottable-value").text.strip()
                 location = prop.find("dt", string="所在地").find_next("dd").text.strip()
+                price = prop.find("dt", class_="dottable-vm", string="販売価格").find_next("span", class_="dottable-value").text.strip()
                 land = clean_text(prop.find("dt", string="土地面積").find_next("dd").text)
                 building = clean_text(prop.find("dt", string="建物面積").find_next("dd").text)
                 layout = prop.find("dt", string="間取り").find_next("dd").text.strip()
                 age = prop.find("dt", string="築年月").find_next("dd").text.strip()
 
                 data_entry = {
-                    "販売価格": price,
                     "所在地": location,
+                    "販売価格": price,
                     "土地面積": land,
                     "建物面積": building,
                     "間取り": layout,
