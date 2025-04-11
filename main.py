@@ -57,8 +57,7 @@ def process():
                     "築年月": age
                 }
 
-                if data_entry not in all_data:
-                    all_data.append(data_entry)
+                all_data.append(data_entry)
             except AttributeError:
                 continue
 
