@@ -6,7 +6,7 @@ def parse_area_old_houses(path: str):
     """
     SUUMOのエリア別 中古戸建て情報をスクレイピングする関数。
     path（例: 'ikkodate/tokyo/SC13103/'）を元に複数ページを巡回し、
-    タイトル・価格・住所・アクセス・土地面積・建物面積を取得する。
+    タイトル・価格・住所・土地面積・建物面積を取得する。
 
     Returns:
         List[List[str]]: 2次元リスト。1行が1物件。
@@ -31,11 +31,11 @@ def parse_area_old_houses(path: str):
                 title = item.select_one(".cassetteitem_content-title").text.strip()
                 price = item.select_one(".cassetteitem_price--price").text.strip()
                 address = item.select_one(".cassetteitem_detail-col1").text.strip()
-                access = item.select_one(".cassetteitem_detail-col2").text.strip()
                 land_area = item.select_one(".cassetteitem_detail-col3").text.strip()
                 building_area = item.select_one(".cassetteitem_detail-col4").text.strip()
+
                 results.append([
-                    title, price, address, access, land_area, building_area
+                    address, title, price, land_area, building_area
                 ])
             except Exception as e:
                 # 不正な構造の物件があればスキップ
