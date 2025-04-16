@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-def parse_apartment(html):
+def parse_client_old_apartments(html):
     soup = BeautifulSoup(html, 'html.parser')
     data_list = []
 
