@@ -8,10 +8,9 @@ def parse_client_old_houses(soup):
             data[key] = value
 
         result = [
-            "",  # 物件名（必要ならタイトルから取得）
+            data.get("物件名", ""),  # 物件名を取得
             data.get("販売価格", ""),
             data.get("所在地", ""),
-            data.get("沿線・駅", ""),
             data.get("土地面積", ""),
             data.get("建物面積", ""),
             data.get("間取り", ""),
