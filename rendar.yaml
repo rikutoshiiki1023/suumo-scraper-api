@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: suumo-scraper
+    env: python
+    buildCommand: ""
+    startCommand: "python main.py"
