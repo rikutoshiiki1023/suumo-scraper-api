@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def scrape_area_old_houses(path: str):
+def parse_area_old_houses(path: str):
     """
     SUUMOのエリア別 中古戸建て情報をスクレイピングする関数。
     path（例: 'ikkodate/tokyo/SC13103/'）を元に複数ページを巡回し、
