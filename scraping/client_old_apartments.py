@@ -43,13 +43,17 @@ def process():
 
     try:
         response = requests.get(url)
+        response.raise_for_status()  # ここでリクエストエラーをキャッチ
         response.encoding = response.apparent_encoding
         html = response.text
-    except Exception as e:
-        return jsonify({'error': f'Error fetching page: {e}'})
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Error fetching page: {str(e)}'}), 400
 
     if target == 'client_old_apartments':
         result = parse_apartment(html)
         return jsonify({'data': result})
 
-    return jsonify({'error': 'Invalid target specified'})
+    return jsonify({'error': 'Invalid target specified'}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)
