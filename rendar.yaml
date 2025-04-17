@@ -1,6 +1,9 @@
 services:
   - type: web
-    name: suumo-scraper
+    name: suumo-scraper-api
     env: python
     buildCommand: ""
     startCommand: "python main.py"
+    envVars:
+      - key: PORT
+        value: 10000
