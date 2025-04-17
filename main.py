@@ -67,32 +67,51 @@ def parse_old_apartments(html):
 
     return data_list
 
-# ========== APIエンドポイント ==========
+# ========== APIエンドポイント（ページネーション対応） ==========
 @app.route('/process', methods=['POST'])
 def process():
     req_data = request.json
     target = req_data.get('target')
-    url = req_data.get('url')
+    base_url = req_data.get('url')
 
-    if not url or not target:
+    if not base_url or not target:
         return jsonify({'error': 'Missing required parameters'}), 400
 
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        response.encoding = response.apparent_encoding
-        html = response.text
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Error fetching page: {str(e)}'}), 400
+    all_data = []
+    page = 1
 
-    if target in ['area_old_houses', 'client_old_houses']:
-        result = parse_old_houses(html)
-    elif target in ['area_old_apartments', 'client_old_apartments']:
-        result = parse_old_apartments(html)
-    else:
-        return jsonify({'error': 'Invalid target specified'}), 400
+    while True:
+        url = base_url
+        if page > 1:
+            if "?" in base_url:
+                url += f"&page={page}"
+            else:
+                url += f"?page={page}"
 
-    return jsonify({'data': result})
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            response.encoding = response.apparent_encoding
+            html = response.text
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching page {page}: {e}")
+            break
+
+        # パース処理
+        if target in ['area_old_houses', 'client_old_houses']:
+            parsed = parse_old_houses(html)
+        elif target in ['area_old_apartments', 'client_old_apartments']:
+            parsed = parse_old_apartments(html)
+        else:
+            return jsonify({'error': 'Invalid target specified'}), 400
+
+        if not parsed:
+            break  # 次ページにデータがない＝終了
+
+        all_data.extend(parsed)
+        page += 1
+
+    return jsonify({'data': all_data})
 
 # ========== Flaskアプリ起動 ==========
 if __name__ == "__main__":
