@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
@@ -10,6 +9,19 @@ app = Flask(__name__)
 def clean_area(text):
     return re.sub(r'（.*?）', '', text).strip()
 
+def extract_dl_data(box, field_name):
+    try:
+        dl_tags = box.select("dl.tableinnerbox")
+        for dl in dl_tags:
+            dt = dl.find("dt")
+            dd = dl.find("dd")
+            if dt and dd and dt.get_text(strip=True) == field_name:
+                return dd.get_text(strip=True).split('（')[0].strip()
+        return ""
+    except:
+        return ""
+
+# --- area_old_houses ---
 def parse_area_old_houses(html):
     soup = BeautifulSoup(html, 'html.parser')
     results = [["所在地", "販売価格", "土地面積", "建物面積", "間取り", "築年月"]]
@@ -31,6 +43,7 @@ def parse_area_old_houses(html):
 
     return results
 
+# --- area_old_apartments ---
 def parse_area_old_apartments(html):
     soup = BeautifulSoup(html, 'html.parser')
     results = [["所在地", "物件名", "販売価格", "専有面積", "バルコニー", "間取り", "築年月"]]
@@ -53,6 +66,7 @@ def parse_area_old_apartments(html):
 
     return results
 
+# --- client_old_apartments ---
 def parse_client_old_apartments(html):
     soup = BeautifulSoup(html, 'html.parser')
     results = [["所在地", "物件名", "販売価格", "専有面積", "バルコニー", "間取り", "築年月"]]
@@ -61,12 +75,12 @@ def parse_client_old_apartments(html):
     for box in boxes:
         try:
             name = box.select_one('.listtitleunit-title a').get_text(strip=True)
-            price = box.find('dt', string='販売価格').find_next('dd').get_text(strip=True)
-            location = box.find('dt', string='所在地').find_next('dd').get_text(strip=True)
-            area = clean_area(box.find('dt', string='専有面積').find_next('dd').get_text(strip=True))
-            balcony = clean_area(box.find('dt', string='バルコニー').find_next('dd').get_text(strip=True))
-            layout = box.find('dt', string='間取り').find_next('dd').get_text(strip=True)
-            built_year = box.find('dt', string='築年月').find_next('dd').get_text(strip=True)
+            location = extract_dl_data(box, "所在地")
+            price = extract_dl_data(box, "販売価格")
+            area = extract_dl_data(box, "専有面積")
+            balcony = extract_dl_data(box, "バルコニー")
+            layout = extract_dl_data(box, "間取り")
+            built_year = extract_dl_data(box, "築年月")
 
             results.append([location, name, price, area, balcony, layout, built_year])
         except Exception as e:
@@ -75,6 +89,7 @@ def parse_client_old_apartments(html):
 
     return results
 
+# --- client_old_houses ---
 def parse_client_old_houses(html):
     soup = BeautifulSoup(html, 'html.parser')
     results = [["所在地", "販売価格", "土地面積", "建物面積", "間取り", "築年月"]]
@@ -82,12 +97,12 @@ def parse_client_old_houses(html):
 
     for box in boxes:
         try:
-            location = box.find("dt", string="所在地").find_next("dd").get_text(strip=True)
-            price = box.find("dt", string="販売価格").find_next("dd").get_text(strip=True)
-            land_area = clean_area(box.find("dt", string="土地面積").find_next("dd").get_text(strip=True))
-            building_area = clean_area(box.find("dt", string="建物面積").find_next("dd").get_text(strip=True))
-            layout = box.find("dt", string="間取り").find_next("dd").get_text(strip=True)
-            built_year = box.find("dt", string="築年月").find_next("dd").get_text(strip=True)
+            location = extract_dl_data(box, "所在地")
+            price = extract_dl_data(box, "販売価格")
+            land_area = extract_dl_data(box, "土地面積")
+            building_area = extract_dl_data(box, "建物面積")
+            layout = extract_dl_data(box, "間取り")
+            built_year = extract_dl_data(box, "築年月")
 
             results.append([location, price, land_area, building_area, layout, built_year])
         except Exception as e:
@@ -96,6 +111,7 @@ def parse_client_old_houses(html):
 
     return results
 
+# --- 共通エンドポイント ---
 @app.route('/process', methods=['POST'])
 def process():
     req_data = request.json
