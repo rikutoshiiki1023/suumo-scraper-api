@@ -1,37 +1,14 @@
 from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
+import re
+import os
 
 app = Flask(__name__)
 
-@app.route('/process', methods=['POST'])
-def process():
-    req_data = request.json
-    target = req_data.get('target')
-    url = req_data.get('url')
-
-    if not url or not target:
-        return jsonify({'error': 'Missing required parameters'}), 400
-
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        response.encoding = response.apparent_encoding
-        html = response.text
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Error fetching page: {str(e)}'}), 400
-
-    if target == 'area_old_houses':
-        result = parse_old_houses(html)
-    else:
-        return jsonify({'error': 'Invalid target specified'}), 400
-
-    return jsonify({'data': result})
-
-import re
-import requests
-from bs4 import BeautifulSoup
-
+# ====================
+# パース関数（area_old_houses 専用）
+# ====================
 def parse_old_houses(base_url):
     results = []
     page = 1
@@ -44,11 +21,12 @@ def parse_old_houses(base_url):
         res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         if res.status_code != 200:
             break
+
         soup = BeautifulSoup(res.text, 'html.parser')
         boxes = soup.select('.dottable.dottable--cassette')
 
         if not boxes:
-            break  # 最終ページ
+            break
 
         for box in boxes:
             try:
@@ -70,13 +48,42 @@ def parse_old_houses(base_url):
             except Exception as e:
                 print(f"Error parsing item on page {page}: {e}")
                 continue
+
         page += 1
 
     return results
 
+# ====================
+# API エンドポイント
+# ====================
+@app.route('/process', methods=['POST'])
+def process():
+    req_data = request.json
+    target = req_data.get('target')
+    url = req_data.get('url')
+
+    if not url or not target:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        response.encoding = response.apparent_encoding
+        html = response.text
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Error fetching page: {str(e)}'}), 400
+
+    # ターゲットによって処理を分岐（現在は area_old_houses のみ対応）
+    if target == 'area_old_houses':
+        result = parse_old_houses(url)
+    else:
+        return jsonify({'error': 'Invalid target specified'}), 400
+
+    return jsonify({'data': result})
+
+# ====================
+# Flask 起動設定（Render向け）
+# ====================
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
-
