@@ -6,9 +6,7 @@ import os
 
 app = Flask(__name__)
 
-# ====================
-# パース関数（area_old_houses 専用）
-# ====================
+# ========== area_old_houses専用のパーサー ==========
 def parse_old_houses(base_url):
     results = []
     page = 1
@@ -24,7 +22,6 @@ def parse_old_houses(base_url):
 
         soup = BeautifulSoup(res.text, 'html.parser')
         boxes = soup.select('.dottable.dottable--cassette')
-
         if not boxes:
             break
 
@@ -51,11 +48,11 @@ def parse_old_houses(base_url):
 
         page += 1
 
-    return results
+    # ヘッダーを追加して返す
+    headers = ["所在地", "販売価格", "土地面積", "建物面積", "間取り", "築年月"]
+    return [headers] + results
 
-# ====================
-# API エンドポイント
-# ====================
+# ========== エンドポイント ==========
 @app.route('/process', methods=['POST'])
 def process():
     req_data = request.json
@@ -73,7 +70,6 @@ def process():
     except requests.exceptions.RequestException as e:
         return jsonify({'error': f'Error fetching page: {str(e)}'}), 400
 
-    # ターゲットによって処理を分岐（現在は area_old_houses のみ対応）
     if target == 'area_old_houses':
         result = parse_old_houses(url)
     else:
@@ -81,9 +77,7 @@ def process():
 
     return jsonify({'data': result})
 
-# ====================
-# Flask 起動設定（Render向け）
-# ====================
+# ========== アプリ起動 ==========
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
