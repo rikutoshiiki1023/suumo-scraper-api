@@ -28,33 +28,51 @@ def process():
 
     return jsonify({'data': result})
 
-def parse_old_houses(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    data_list = []
+import re
+import requests
+from bs4 import BeautifulSoup
 
-    property_boxes = soup.select('.property_unit-body')
-    for box in property_boxes:
-        try:
-            location = box.find('dt', string='所在地').find_next('dd').get_text(strip=True)
-            price = box.find('dt', string='販売価格').find_next('dd').find('span', class_='dottable-value').get_text(strip=True)
-            land_area = box.find('dt', string='土地面積').find_next('dd').get_text(strip=True)
-            building_area = box.find('dt', string='建物面積').find_next('dd').get_text(strip=True)
-            layout = box.find('dt', string='間取り').find_next('dd').get_text(strip=True)
-            built_year = box.find('dt', string='築年月').find_next('dd').get_text(strip=True)
+def parse_old_houses(base_url):
+    results = []
+    page = 1
 
-            data_list.append([
-                location,
-                price,
-                land_area,
-                building_area,
-                layout,
-                built_year
-            ])
-        except Exception as e:
-            print(f"Error parsing house: {e}")
-            continue
+    def clean(text):
+        return re.sub(r'（.*?）', '', text).strip()
 
-    return data_list
+    while True:
+        url = f"{base_url}?page={page}" if page > 1 else base_url
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        if res.status_code != 200:
+            break
+        soup = BeautifulSoup(res.text, 'html.parser')
+        boxes = soup.select('.dottable.dottable--cassette')
+
+        if not boxes:
+            break  # 最終ページ
+
+        for box in boxes:
+            try:
+                location = box.find('dt', string='所在地').find_next('dd').get_text(strip=True)
+                price = box.find('dt', string='販売価格').find_next('dd').get_text(strip=True)
+                land_area = clean(box.find('dt', string='土地面積').find_next('dd').get_text(strip=True))
+                building_area = clean(box.find('dt', string='建物面積').find_next('dd').get_text(strip=True))
+                layout = box.find('dt', string='間取り').find_next('dd').get_text(strip=True)
+                built_year = box.find('dt', string='築年月').find_next('dd').get_text(strip=True)
+
+                results.append([
+                    location,
+                    price,
+                    land_area,
+                    building_area,
+                    layout,
+                    built_year
+                ])
+            except Exception as e:
+                print(f"Error parsing item on page {page}: {e}")
+                continue
+        page += 1
+
+    return results
 
 if __name__ == "__main__":
     import os
