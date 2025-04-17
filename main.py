@@ -56,5 +56,8 @@ def parse_old_houses(html):
 
     return data_list
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))  # Renderが割り当てるPORT環境変数を使用
+    app.run(host="0.0.0.0", port=port, debug=True)
+
