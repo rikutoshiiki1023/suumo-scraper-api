@@ -76,6 +76,7 @@ def parse_old_houses(base_url):
 
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get("PORT", 10000))  # Renderが割り当てるPORT環境変数を使用
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
 
